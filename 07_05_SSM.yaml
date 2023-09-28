@@ -1,0 +1,79 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: SSM
+
+Parameters:
+  Prefix:
+    Type: String
+
+Resources:
+  PatchBaseline:
+    Type: AWS::SSM::PatchBaseline
+    Properties:
+      ApprovalRules:
+        PatchRules:
+          - ApproveAfterDays: 0
+            PatchFilterGroup:
+              PatchFilters:
+                - Key: CLASSIFICATION
+                  Values:
+                    - Security
+                - Key: SEVERITY
+                  Values:
+                    - Critical
+          - ApproveAfterDays: 7
+            PatchFilterGroup:
+              PatchFilters:
+                - Key: CLASSIFICATION
+                  Values:
+                    - Bugfix
+                - Key: SEVERITY
+                  Values:
+                    - Critical
+      Name: !Sub "${Prefix}-PatchBaseline"
+      OperatingSystem: AMAZON_LINUX_2023
+      PatchGroups:
+        - "AMAZON_LINUX_2023"
+
+  MaintenanceWindow:
+    Type: AWS::SSM::MaintenanceWindow
+    Properties:
+      AllowUnassociatedTargets: true
+      Cutoff: 0
+      Duration: 1
+      Name: !Sub "${Prefix}-MaintenanceWindow"
+      Schedule: "cron(00 17 ? * FRI *)"
+
+  MaintenanceWindowTarget:
+    Type: AWS::SSM::MaintenanceWindowTarget
+    Properties:
+      Name: !Sub "${Prefix}-MaintenanceWindowTarget"
+      ResourceType: INSTANCE
+      Targets:
+        - Key: "tag:PatchGroup"
+          Values:
+            - "AMAZON_LINUX_2023"
+      WindowId: !Ref MaintenanceWindow
+
+  MaintenanceWindowTask:
+    Type: AWS::SSM::MaintenanceWindowTask
+    Properties:
+      MaxConcurrency: 5
+      MaxErrors: 1
+      Priority: 0
+      Name: !Sub "${Prefix}-MaintenanceWindowTask"
+      Targets:
+        - Key: WindowTargetIds
+          Values:
+            - !Ref MaintenanceWindowTarget
+      TaskArn: AWS-RunPatchBaseline
+      TaskType: RUN_COMMAND
+      WindowId: !Ref MaintenanceWindow
+      TaskInvocationParameters:
+        MaintenanceWindowRunCommandParameters:
+          TimeoutSeconds: 600
+          Parameters: 
+            Operation:
+              - Install
+            RebootOption:
+              - NoReboot

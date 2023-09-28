@@ -1,0 +1,41 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description:  Security Group for EC2
+
+Parameters:
+  AllowedIP:
+    Type: String
+
+Resources:
+  sgEC2:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !ImportValue VPCId
+      GroupDescription: Security group for EC2
+      GroupName: security group for EC2
+
+  EC2IngressHTTP:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+        Description: Allow HTTP access from Global
+        FromPort: 80
+        ToPort: 80
+        IpProtocol: tcp
+        CidrIp: !Ref AllowedIP
+        GroupId: !Ref sgEC2
+
+  EC2IngressSSH:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+        Description: Allow SSH access from Global
+        FromPort: 22
+        ToPort: 22
+        IpProtocol: tcp
+        CidrIp: !Ref AllowedIP
+        GroupId: !Ref sgEC2
+
+Outputs:
+  SgEC2Id:
+    Value: !Ref sgEC2
+    Export:
+      Name: SgEC2Id

@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: EC2
+
+Parameters:
+  Prefix:
+    Type: String
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+
+Resources:
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties: 
+      ImageId: ami-079cd5448deeace01 # Amazon Linux 2023
+      KeyName: !Ref KeyName
+      InstanceType: t2.micro
+      BlockDeviceMappings:
+        - Ebs:
+            VolumeSize: 8
+            VolumeType: gp3
+          DeviceName: /dev/xvda      
+      NetworkInterfaces: 
+        - AssociatePublicIpAddress: "true"
+          DeviceIndex: "0"
+          SubnetId: !ImportValue SubnetPublic1AId
+          GroupSet:
+            - !ImportValue SgEC2Id
+      IamInstanceProfile: !ImportValue InstanceProfileId
+      UserData: !Base64 |
+        #!/bin/bash
+        sudo yum install -y nginx
+        sudo systemctl start nginx.service
+        sudo systemctl enable nginx.service        
+      Tags:
+          - Key: Name
+            Value: !Sub "${Prefix}-server"
+          - Key: PatchGroup
+            Value: "AMAZON_LINUX_2023"
+Outputs:
+  EC2InstanceId:
+    Value: !Ref EC2Instance
+    Export:
+      Name: EC2InstanceId
